@@ -1,15 +1,28 @@
 # GSE_analysis
-## GSE inventory table
+## GSE inventory tables
 
-`data/gse_inventory.csv` lists ground support equipment by model.
+The inventory is split into three CSV files in `data/`, linked by `model_name`.
+
+### `gse_models.csv`: one row per equipment model
 
 | Column | Description |
 |---|---|
+| `model_name` | Manufacturer model name (unique; the key the other tables reference) |
 | `gse_type` | Equipment category (e.g. tug, belt loader, GPU) |
-| `model_name` | Manufacturer model name |
-| `asset_numbers` | Asset numbers for units of this model, separated by `;` |
-| `asset_count` | Number of units; should match the number of entries in `asset_numbers` |
-| `compatible_planes` | Aircraft types this model can service, separated by `;` |
 | `short_name` | Short name or abbreviation for the equipment |
 
-Fields that hold several values use `;` so they don't clash with the CSV's commas.
+### `gse_assets.csv`: one row per physical unit
+
+| Column | Description |
+|---|---|
+| `asset_number` | Unique asset number for the unit |
+| `model_name` | Model of the unit; must match a row in `gse_models.csv` |
+
+### `gse_compatibility.csv`: one row per model–aircraft pair
+
+| Column | Description |
+|---|---|
+| `model_name` | Equipment model; must match a row in `gse_models.csv` |
+| `aircraft_type` | One aircraft type the model can service |
+
+The asset count for a model is the number of rows for that model in `gse_assets.csv`, so it isn't stored separately.
