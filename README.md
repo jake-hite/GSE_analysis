@@ -10,5 +10,6 @@
 | `asset_numbers` | Asset numbers for units of this model, separated by `;` |
 | `asset_count` | Number of units; should match the number of entries in `asset_numbers` |
 | `compatible_planes` | Aircraft types this model can service, separated by `;` |
+| `short_name` | Short name or abbreviation for the equipment |
 
 Fields that hold several values use `;` so they don't clash with the CSV's commas.
