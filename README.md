@@ -23,6 +23,20 @@ The data comes from `data/raw/Hite_Pull_2_Sept_17.csv`: SEA arrivals and departu
 | `Dept_Gate_Id` | Departure gate ID |
 | `Arr_Gate_Id` | Arrival gate ID |
 | `Flt_Num` | Flight number |
+| `short_ac_type` | Aircraft family, grouped from `Aircraft_type` (see below) |
+
+`short_ac_type` groups aircraft type codes as follows. Rows whose `Aircraft_type` is `NULL` also get `NULL`.
+
+| `short_ac_type` | `Aircraft_type` codes |
+|---|---|
+| ERJ | EA4, EMW, ES4, ES5 |
+| A220 | 221, 223 |
+| A321 Neo | 319, 320, 321, 3N1, 3NE, 3NP |
+| 737 | 738, 739, 73J, 73R |
+| 757 | 75D, 75G, 75H, 75S, 75Y |
+| 767 | 764, 76K, 76L |
+| A330 | 332, 333, 339 |
+| A350 | 359, 35H, 35J, 35M |
 
 `Gate` must match the gate ID for the row's direction:
 
