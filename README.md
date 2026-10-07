@@ -44,3 +44,17 @@ The data comes from `data/raw/Hite_Pull_2_Sept_17.csv`: SEA arrivals and departu
 - `DEP` rows: `Gate` equals `Dept_Gate_Id`
 
 Run `python3 scripts/check_flights_by_gate.py` to check this. It lists any rows that break the rule and exits with an error if there are any.
+
+## Arrival and departure summary
+
+`data/arr_dep_summary.csv` counts flights in `flights_by_gate.csv` for each gate, split into arrivals and departures, with one column per `short_ac_type` family.
+
+| Column | Description |
+|---|---|
+| `Gate` | Gate |
+| `Arr/Dep` | `ARR` or `DEP` |
+| `ERJ` … `A350` | Number of flights of that aircraft family |
+| `NULL` | Number of flights with an unknown aircraft type |
+| `Total` | All flights for that gate and direction |
+
+Every gate has both an `ARR` and a `DEP` row, with zeros where there were no flights. Rebuild it after changing `flights_by_gate.csv` with `python3 scripts/build_arr_dep_summary.py`.
