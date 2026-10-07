@@ -86,3 +86,13 @@ Run `python3 scripts/check_flights_by_gate.py` to check this. It lists any rows 
 | `Total` | All flights for that gate and direction |
 
 Every gate has both an `ARR` and a `DEP` row, with zeros where there were no flights. Rebuild it after changing `flights_by_gate.csv` with `python3 scripts/build_arr_dep_summary.py`.
+
+## Capability match
+
+`python3 scripts/build_capability_match.py` compares the tow tractor fleet with departure demand and writes three tables. Only departures are counted, since each one needs a pushback. Departures with a `NULL` aircraft type are left out of the capability checks.
+
+- `data/tractor_capability_by_family.csv`: one row per tractor model, with its unit count and a `1` for each aircraft family it can tow every type of.
+- `data/family_daily_demand.csv`: for each aircraft family, average and peak-day departures against the number of tractors able to tow it.
+- `data/gate_capability_match.csv`: one row per gate, with its departures, widebody (767, A330, A350) departures, the hardest family to cover there (the one the fewest tractors can tow), and the tractor models that can tow every aircraft type seen at that gate.
+
+These are daily figures. They show which tractors each gate depends on, but not whether enough tractors are free at the same time; that needs departure times.
