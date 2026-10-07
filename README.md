@@ -3,7 +3,14 @@
 
 `data/flights_by_gate.csv` has one row per flight at a gate, recording the aircraft type used.
 
-The data comes from `data/raw/Hite_Pull_2_Sept_17.csv`: SEA arrivals and departures from 2026-01-01 to 2026-08-31. Two arrivals were left out because their `Gate` is `0` and their `Arr_Gate_Id` is blank (flight 354 on 2026-03-13 and flight 2889 on 2026-07-28). All other rows are kept as they are. A few of them have no usable gate (`Gate` blank, `NONE` or `OPS`) or a blank `Aircraft_type`, so analysis should skip those rows where it needs that value.
+The data comes from `data/raw/Hite_Pull_2_Sept_17.csv`: SEA arrivals and departures from 2026-01-01 to 2026-08-31. 52 rows without a usable gate were left out:
+
+- 25 with a blank `Gate`
+- 23 with `Gate` set to `NONE`
+- 2 with `Gate` set to `OPS`
+- 2 arrivals with `Gate` set to `0` and a blank `Arr_Gate_Id` (flight 354 on 2026-03-13 and flight 2889 on 2026-07-28)
+
+233 flights had a blank aircraft type; their `Aircraft_type` is `NULL`.
 
 | Column | Description |
 |---|---|
