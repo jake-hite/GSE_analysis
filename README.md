@@ -106,3 +106,18 @@ Every gate has both an `ARR` and a `DEP` row, with zeros where there were no fli
 - `data/gate_capability_match.csv`: one row per gate, with its departures, widebody (767, A330, A350) departures, the hardest family to cover there (the one the fewest tractors can tow), and the tractor models that can tow every aircraft type seen at that gate.
 
 These are daily figures. They show which tractors each gate depends on, but not whether enough tractors are free at the same time; that needs departure times.
+
+## Peak demand
+
+`python3 scripts/build_peak_demand.py` measures how many tractors are busy at the same time. Each departure is a pushback job at its scheduled time, and each towed departure also has a tow job. The assumptions are set at the top of the script:
+
+- a pushback keeps a tractor busy for 20 minutes (30 for widebodies), and a tow for 45 minutes
+- a tow starts 60 minutes before departure, or when the aircraft arrived if that was later
+- no tractors are out of service (`SPARE_UNITS`)
+
+Travel time between gates is not modelled, and times are scheduled, not actual. Departures with a `NULL` aircraft type are left out.
+
+- `data/hourly_departures.csv`: average and peak-day departures for each hour of the day, by aircraft family
+- `data/peak_demand_by_class.csv`: for groups of aircraft families, the most jobs in progress at once against the tractors able to do them, with median and 95th-percentile daily peaks
+- `data/peak_demand_by_concourse.csv`: the same peaks for each concourse, i.e. what each would need with its own tractors
+- `data/shortage_periods.csv`: every 5-minute step when no assignment of tractors to the jobs in progress works
