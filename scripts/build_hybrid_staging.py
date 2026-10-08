@@ -1,13 +1,14 @@
-"""Model a hybrid: one tractor staged at each gate in STAGED_GATES, a shared pool for the rest.
+"""Model a hybrid: a tractor staged at each gate, except the pool gates, which a shared pool serves.
 
-Gates joined with "+" in STAGED_GATES (e.g. "A12+A12A") share a single staged tractor.
+The pool gates are set by POOL_CONCOURSES and POOL_GATES. Gates joined with "+" in
+SHARED_TRACTORS (e.g. "A12+A12A+A12B") share a single staged tractor.
 
 Jobs (pushbacks and tows) come from build_peak_demand.jobs_for, with the same assumptions.
 A tow counts against its departure gate.
 
-Each staged gate gets a tractor model that can tow the most of that gate's departures.
-Among models that tie, the choice is the one that leaves the pool short least often:
-a greedy pick first, then one model at a time is swapped while that reduces pool shortages.
+Staged gates get tractor models so that, within the fleet, staged tractors can tow as many
+jobs as possible in total. Among models that tie at a gate, the choice is the one that leaves
+the pool short least often: one model at a time is swapped while that reduces pool shortages.
 The staged tractor takes each job at its gate in time order if it is free and can tow that aircraft;
 otherwise the job goes to the pool. The pool is every tractor not staged, and serves all
 other gates as well as the staged gates' overflow. As in build_peak_demand, the pool is
@@ -15,9 +16,9 @@ short at a time step when some group of aircraft families has more jobs in progr
 pool tractors able to tow at least one of them. Travel time is not modelled.
 
 Writes to data/:
-- hybrid_staged_gates.csv: for each staged gate, the tractor staged there, how much of the
-  gate's work it covers, and the gate's departures by aircraft family (% of its departures)
-- hybrid_pool_gates.csv: the gates served only by the pool, with their jobs and aircraft mix
+- hybrid_gates.csv: every gate, staged or pool; for staged gates, the tractor staged there and
+  how much of the gate's work it covers; for all gates, departures by aircraft family
+  (% of the gate's departures)
 - hybrid_pool_demand.csv: peak pool jobs for each family group against pool tractors
 - hybrid_pool_shortages.csv: every time step where the pool cannot cover its jobs
 """
@@ -29,13 +30,64 @@ from datetime import datetime, timedelta
 from build_peak_demand import (BIN, CLASSES, FAMILIES, floor_bin, jobs_for, parse, read,
                                write)
 
-STAGED_GATES = ["B7/B7A/B7B", "B5A", "B5", "B4", "B3", "B1", "B6", "B8", "A1", "A2", "A3",
-                "A4/A4A", "A5", "A6", "A11/A11A", "A12+A12A+A12B", "A13/A13A", "A14"]
+# Gates served only by the pool: every gate in POOL_CONCOURSES, plus POOL_GATES.
+# Every other gate with departures gets its own staged tractor, except that the gates in
+# each SHARED_TRACTORS entry share one.
+POOL_CONCOURSES = ["S"]
+POOL_GATES = ["A8/A8A", "A9", "A10/A10A"]
+SHARED_TRACTORS = ["A12+A12A+A12B"]
 OPERATING_MINUTES = 19 * 60  # 05:00 to midnight, for staged tractor utilisation
 
 
 def gate_sort_key(gate):
     return gate[0], int(re.match(r"\D(\d+)", gate).group(1)), gate
+
+
+def best_assignment(gates, units, value):
+    """Assign one model to each gate, at most units[m] gates per model, maximising total value.
+
+    Solved as a min-cost flow (source -> gate -> model -> sink) by successive shortest paths.
+    """
+    models = list(units)
+    n = len(gates) + len(models) + 2
+    source, sink = n - 2, n - 1
+    graph = [[] for _ in range(n)]  # edges: [to, capacity, cost, index of reverse edge]
+
+    def add(a, b, cap, cost):
+        graph[a].append([b, cap, cost, len(graph[b])])
+        graph[b].append([a, 0, -cost, len(graph[a]) - 1])
+
+    for i, g in enumerate(gates):
+        add(source, i, 1, 0)
+        for j, m in enumerate(models):
+            add(i, len(gates) + j, 1, -value(g, m))
+    for j, m in enumerate(models):
+        add(len(gates) + j, sink, units[m], 0)
+
+    for _ in gates:
+        dist = [float("inf")] * n
+        dist[source], prev = 0, [None] * n
+        for _ in range(n):  # Bellman-Ford: costs can be negative
+            changed = False
+            for a in range(n):
+                if dist[a] == float("inf"):
+                    continue
+                for k, (b, cap, cost, _) in enumerate(graph[a]):
+                    if cap and dist[a] + cost < dist[b]:
+                        dist[b], prev[b], changed = dist[a] + cost, (a, k), True
+            if not changed:
+                break
+        if dist[sink] == float("inf"):
+            raise SystemExit("Not enough tractors to stage every gate")
+        b = sink
+        while b != source:
+            a, k = prev[b]
+            graph[a][k][1] -= 1
+            graph[b][graph[a][k][3]][1] += 1
+            b = a
+
+    return {g: models[e[0] - len(gates)] for i, g in enumerate(gates)
+            for e in graph[i] if len(gates) <= e[0] < len(gates) + len(models) and e[1] == 0}
 
 
 def simulate(staged, jobs, can_tow):
@@ -88,27 +140,25 @@ def main():
         for start, minutes in jobs_for(r):
             jobs[r["Gate"]].append((start, start + timedelta(minutes=minutes), r["short_ac_type"]))
     # Gates joined with "+" share one staged tractor.
-    for entry in STAGED_GATES:
-        if "+" in entry:
-            jobs[entry] = [job for gate in entry.split("+") for job in jobs.pop(gate, [])]
+    for entry in SHARED_TRACTORS:
+        jobs[entry] = [job for gate in entry.split("+") for job in jobs.pop(gate, [])]
+    pool_gates = [g for g in jobs if g[0] in POOL_CONCOURSES or g in POOL_GATES]
+    staged_entries = sorted((g for g in jobs if g not in pool_gates), key=gate_sort_key)
+    if len(staged_entries) > sum(units.values()):
+        raise SystemExit(f"{len(staged_entries)} staged gates but only {sum(units.values())} tractors")
 
-    # Candidate models per gate: those that can tow the most of its jobs.
     def coverage(gate, model):
         return sum(fam in can_tow[model] for _, _, fam in jobs[gate])
 
-    candidates = {}
-    for gate in STAGED_GATES:
-        best = max(coverage(gate, m) for m in units)
-        candidates[gate] = [m for m in units if coverage(gate, m) == best]
-
-    # Greedy start: most constrained gates first, least capable model first.
+    # Give each staged gate a model so that staged tractors can tow as many jobs as possible
+    # in total, within the units of each model. Ties go to less capable models.
+    cover = {(g, m): coverage(g, m) for g in staged_entries for m in units}
+    staged = best_assignment(staged_entries, units, lambda g, m: cover[g, m] * 100 - len(can_tow[m]))
     remaining = dict(units)
-    staged = {}
-    for gate in sorted(STAGED_GATES, key=lambda g: len(candidates[g])):
-        options = [m for m in candidates[gate] if remaining[m] > 0] or \
-                  [m for m in units if remaining[m] > 0]
-        staged[gate] = min(options, key=lambda m: len(can_tow[m]))
-        remaining[staged[gate]] -= 1
+    for model in staged.values():
+        remaining[model] -= 1
+    # Models that would cover exactly as many jobs at each gate, for the swap search below.
+    candidates = {g: [m for m in units if cover[g, m] == cover[g, staged[g]]] for g in staged_entries}
 
     pool_busy = simulate(staged, jobs, can_tow)[1]
     groups = [set(c) for n in range(1, len(FAMILIES) + 1) for c in itertools.combinations(FAMILIES, n)]
@@ -127,7 +177,7 @@ def main():
     improved = True
     while improved:
         improved = False
-        for gate in STAGED_GATES:
+        for gate in staged_entries:
             for model in candidates[gate]:
                 if model == staged[gate] or remaining[model] == 0:
                     continue
@@ -156,17 +206,21 @@ def main():
         return ["" if not counts[fam] else "<1%" if counts[fam] / total < 0.005
                 else f"{counts[fam] / total:.0%}" for fam in mix_families]
 
-    write("hybrid_staged_gates.csv",
-          ["Gate", "staged_model", "jobs", "jobs_per_day", "jobs_by_staged_tractor",
+    # One table for every gate: staged gates first, then pool gates.
+    staged_cells = {row[0]: row[1:] for row in gate_rows}
+    rows = []
+    for assignment, gates in (("Staged", staged_entries), ("Pool", sorted(pool_gates, key=gate_sort_key))):
+        for g in gates:
+            if assignment == "Staged":
+                model, total, per_day, *rest = staged_cells[g]
+            else:
+                model, total, per_day = "", len(jobs[g]), round(len(jobs[g]) / len(days), 1)
+                rest = [""] * 6
+            rows.append([g, assignment, model, total, per_day, *rest, *mix_cells(g)])
+    write("hybrid_gates.csv",
+          ["Gate", "assignment", "staged_model", "jobs", "jobs_per_day", "jobs_by_staged_tractor",
            "share_by_staged_tractor", "to_pool_aircraft_too_big", "to_pool_tractor_busy",
-           "staged_tractor_busy_share", *mix_header],
-          [row + mix_cells(row[0]) for row in sorted(gate_rows, key=lambda r: STAGED_GATES.index(r[0]))])
-
-    pool_gates = [g for g in jobs if g not in staged]
-    write("hybrid_pool_gates.csv",
-          ["Gate", "jobs", "jobs_per_day", *mix_header],
-          [[g, len(jobs[g]), round(len(jobs[g]) / len(days), 1), *mix_cells(g)]
-           for g in sorted(pool_gates, key=gate_sort_key)])
+           "staged_tractor_busy_share", *mix_header], rows)
 
     def capacity(families):
         return sum(remaining[m] for m in remaining if can_tow[m] & families)

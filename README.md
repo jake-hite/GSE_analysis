@@ -128,9 +128,14 @@ Travel time between gates is not modelled, and times are scheduled, not actual. 
 
 ## Hybrid staging
 
-`python3 scripts/build_hybrid_staging.py` models one tractor staged at each gate in `STAGED_GATES` (set at the top of the script) with every other tractor in a shared pool. Gates joined with `+` (e.g. `A12+A12A`) share one staged tractor. It uses the same jobs and assumptions as the peak demand analysis. Each staged gate gets a model that can tow as many of its aircraft as possible, picked so the pool is left short as rarely as possible. A staged tractor takes each job at its gate if it is free and can tow the aircraft; everything else goes to the pool.
+`python3 scripts/build_hybrid_staging.py` models a shared pool of tractors for some gates and a staged tractor at each of the others, using the same jobs and assumptions as the peak demand analysis. At the top of the script:
 
-- `data/hybrid_staged_gates.csv`: for each staged gate, the model staged there, how many of the gate's jobs it handles, why the rest go to the pool, how busy it is over the 05:00–24:00 day, and its aircraft mix (`% ERJ` … `% NULL`: each family's share of the gate's departures)
-- `data/hybrid_pool_gates.csv`: the gates served only by the pool, with their jobs and the same aircraft mix columns
+- `POOL_CONCOURSES` and `POOL_GATES` set the gates served only by the pool (currently all S gates, A8/A8A, A9 and A10/A10A)
+- every other gate with departures gets its own staged tractor
+- gates joined with `+` in `SHARED_TRACTORS` (currently `A12+A12A+A12B`) share one staged tractor
+
+Staged gates get the models that let staged tractors tow as many jobs as possible across the fleet; among equal choices, the one that leaves the pool short least often. A staged tractor takes each job at its gate if it is free and can tow the aircraft; everything else goes to the pool, which is every tractor not staged.
+
+- `data/hybrid_gates.csv`: every gate, marked `Staged` or `Pool`. For staged gates: the model staged there, how many of the gate's jobs it handles, why the rest go to the pool, and how busy it is over the 05:00–24:00 day. For all gates: jobs per day and the aircraft mix (`% ERJ` … `% NULL`: each family's share of the gate's departures)
 - `data/hybrid_pool_demand.csv`: peak pool jobs for each group of aircraft families against the pool's tractors
 - `data/hybrid_pool_shortages.csv`: every 5-minute step when the pool cannot cover its jobs
