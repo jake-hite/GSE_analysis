@@ -31,14 +31,17 @@ The asset count for a model is the number of rows for that model in `gse_assets.
 
 `data/flights_by_gate.csv` has one row per flight at a gate, recording the aircraft type used.
 
-The data comes from `data/raw/Hite_Pull_2_Sept_17.csv`: SEA arrivals and departures from 2026-01-01 to 2026-08-31. 52 rows without a usable gate were left out:
+It is built from `data/raw/Hite_Pull_10.7.csv` by `python3 scripts/build_flights_by_gate.py`: SEA arrivals and departures from 2026-01-01 to 2026-08-31. 52 rows without a usable gate are left out:
 
-- 25 with a blank `Gate`
-- 23 with `Gate` set to `NONE`
-- 2 with `Gate` set to `OPS`
-- 2 arrivals with `Gate` set to `0` and a blank `Arr_Gate_Id` (flight 354 on 2026-03-13 and flight 2889 on 2026-07-28)
+- 27 with a blank or `NULL` gate (including flight 354 on 2026-03-13 and flight 2889 on 2026-07-28)
+- 23 with the gate set to `NONE`
+- 2 with the gate set to `OPS`
 
-233 flights had a blank aircraft type; their `Aircraft_type` is `NULL`.
+Flights with a blank aircraft type have `NULL` as their `Aircraft_type`.
+
+The earlier export, `data/raw/Hite_Pull_2_Sept_17.csv`, has the same flights without times, plus flight 81 from CDG on 2026-08-23, which the newer export does not include.
+
+In the raw export, the `Ib_*` time columns describe the flight that brought the aircraft into the row's origin airport, and `schd_dprt_gts` is the row's own scheduled departure in GMT. So only `DEP` rows, whose origin is SEA, have SEA times; on `ARR` rows the time columns are `NULL`. The export's `Time`, second `schd_dprt_gts`, `Schd_Op_Ct`, `DOT_D0_Ct` and unnamed last column are not used.
 
 | Column | Description |
 |---|---|
@@ -52,6 +55,13 @@ The data comes from `data/raw/Hite_Pull_2_Sept_17.csv`: SEA arrivals and departu
 | `Arr_Gate_Id` | Arrival gate ID |
 | `Flt_Num` | Flight number |
 | `short_ac_type` | Aircraft family, grouped from `Aircraft_type` (see below) |
+| `sea_sched_dep_local` | `DEP` only: scheduled departure from SEA |
+| `inbound_gate` | `DEP` only: SEA gate the aircraft arrived at before this departure |
+| `inbound_sched_arr_local` | `DEP` only: scheduled arrival at SEA of the inbound aircraft |
+| `inbound_actual_arr_local` | `DEP` only: actual arrival at SEA of the inbound aircraft |
+| `towed` | `DEP` only: `Y` if `inbound_gate` differs from `Gate`, so the aircraft was moved between gates; `N` if not; `NULL` if the inbound gate is unknown |
+
+Times are Seattle local time (PST/PDT) as `YYYY-MM-DD HH:MM`.
 
 `short_ac_type` groups aircraft type codes as follows. Rows whose `Aircraft_type` is `NULL` also get `NULL`.
 
