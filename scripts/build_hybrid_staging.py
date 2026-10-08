@@ -6,22 +6,24 @@ Jobs (pushbacks and tows) come from build_peak_demand.jobs_for, with the same as
 A tow counts against its departure gate.
 
 Each staged gate gets a tractor model that can tow the most of that gate's departures.
-Among models that tie, the choice is the one that leaves the pool shortest the least often:
-a greedy pick first, then one model at a time is swapped while that reduces pool shortages. The staged
-tractor takes each job at its gate in time order if it is free and can tow that aircraft;
+Among models that tie, the choice is the one that leaves the pool short least often:
+a greedy pick first, then one model at a time is swapped while that reduces pool shortages.
+The staged tractor takes each job at its gate in time order if it is free and can tow that aircraft;
 otherwise the job goes to the pool. The pool is every tractor not staged, and serves all
 other gates as well as the staged gates' overflow. As in build_peak_demand, the pool is
 short at a time step when some group of aircraft families has more jobs in progress than
 pool tractors able to tow at least one of them. Travel time is not modelled.
 
 Writes to data/:
-- hybrid_staged_gates.csv: for each staged gate, the tractor staged there and how much of the
-  gate's work it covers
+- hybrid_staged_gates.csv: for each staged gate, the tractor staged there, how much of the
+  gate's work it covers, and the gate's departures by aircraft family (% of its departures)
+- hybrid_pool_gates.csv: the gates served only by the pool, with their jobs and aircraft mix
 - hybrid_pool_demand.csv: peak pool jobs for each family group against pool tractors
 - hybrid_pool_shortages.csv: every time step where the pool cannot cover its jobs
 """
 import collections
 import itertools
+import re
 from datetime import datetime, timedelta
 
 from build_peak_demand import (BIN, CLASSES, FAMILIES, floor_bin, jobs_for, parse, read,
@@ -30,6 +32,10 @@ from build_peak_demand import (BIN, CLASSES, FAMILIES, floor_bin, jobs_for, pars
 STAGED_GATES = ["B7B", "B5A", "B5", "B4", "B3", "B1", "B6", "B8", "A1", "A2", "A3", "A4", "A5",
                 "A6", "A11", "A12+A12A+A12B", "A13", "A14"]
 OPERATING_MINUTES = 19 * 60  # 05:00 to midnight, for staged tractor utilisation
+
+
+def gate_sort_key(gate):
+    return gate[0], int(re.match(r"\D(\d+)", gate).group(1)), gate
 
 
 def simulate(staged, jobs, can_tow):
@@ -134,10 +140,33 @@ def main():
 
     # Run each staged tractor; everything it cannot take goes to the pool.
     gate_rows, pool_busy = simulate(staged, jobs, can_tow)
+
+    # Aircraft mix: each gate's departures by family, as a share of its departures.
+    # NULL (unknown type) departures are counted here so the shares add up to 100%.
+    mix = collections.defaultdict(collections.Counter)
+    for r in read("flights_by_gate.csv"):
+        if r["Arr/Dep"] == "DEP":
+            mix[r["Gate"]][r["short_ac_type"]] += 1
+    mix_families = FAMILIES + ["NULL"]
+    mix_header = [f"% {fam}" for fam in mix_families]
+
+    def mix_cells(entry):
+        counts = sum((mix[g] for g in entry.split("+")), collections.Counter())
+        total = sum(counts.values())
+        return ["" if not counts[fam] else "<1%" if counts[fam] / total < 0.005
+                else f"{counts[fam] / total:.0%}" for fam in mix_families]
+
     write("hybrid_staged_gates.csv",
           ["Gate", "staged_model", "jobs", "jobs_per_day", "jobs_by_staged_tractor",
            "share_by_staged_tractor", "to_pool_aircraft_too_big", "to_pool_tractor_busy",
-           "staged_tractor_busy_share"], sorted(gate_rows, key=lambda r: STAGED_GATES.index(r[0])))
+           "staged_tractor_busy_share", *mix_header],
+          [row + mix_cells(row[0]) for row in sorted(gate_rows, key=lambda r: STAGED_GATES.index(r[0]))])
+
+    pool_gates = [g for g in jobs if g not in staged]
+    write("hybrid_pool_gates.csv",
+          ["Gate", "jobs", "jobs_per_day", *mix_header],
+          [[g, len(jobs[g]), round(len(jobs[g]) / len(days), 1), *mix_cells(g)]
+           for g in sorted(pool_gates, key=gate_sort_key)])
 
     def capacity(families):
         return sum(remaining[m] for m in remaining if can_tow[m] & families)
