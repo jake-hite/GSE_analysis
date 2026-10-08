@@ -29,8 +29,8 @@ from datetime import datetime, timedelta
 from build_peak_demand import (BIN, CLASSES, FAMILIES, floor_bin, jobs_for, parse, read,
                                write)
 
-STAGED_GATES = ["B7B", "B5A", "B5", "B4", "B3", "B1", "B6", "B8", "A1", "A2", "A3", "A4", "A5",
-                "A6", "A11", "A12+A12A+A12B", "A13", "A14"]
+STAGED_GATES = ["B7/B7A/B7B", "B5A", "B5", "B4", "B3", "B1", "B6", "B8", "A1", "A2", "A3",
+                "A4/A4A", "A5", "A6", "A11/A11A", "A12+A12A+A12B", "A13/A13A", "A14"]
 OPERATING_MINUTES = 19 * 60  # 05:00 to midnight, for staged tractor utilisation
 
 

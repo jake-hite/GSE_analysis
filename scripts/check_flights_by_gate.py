@@ -1,9 +1,12 @@
 """Check that Gate matches the gate ID for each flight's direction.
 
-ARR rows must have Gate == Arr_Gate_Id; DEP rows must have Gate == Dept_Gate_Id.
+ARR rows must have Gate == Arr_Gate_Id; DEP rows must have Gate == Dept_Gate_Id. For gates
+grouped in build_flights_by_gate.GATE_GROUPS, Gate is the group name, e.g. "A4/A4A".
 """
 import csv
 import sys
+
+from build_flights_by_gate import merged
 
 GATE_ID_COLUMN = {"ARR": "Arr_Gate_Id", "DEP": "Dept_Gate_Id"}
 
@@ -17,7 +20,7 @@ def main(path="data/flights_by_gate.csv"):
             column = GATE_ID_COLUMN.get(direction)
             if column is None:
                 problems.append(f"line {line}: Arr/Dep is {row['Arr/Dep']!r}, expected ARR or DEP")
-            elif row["Gate"].strip() != row[column].strip():
+            elif row["Gate"].strip() != merged(row[column].strip()):
                 problems.append(
                     f"line {line}: {direction} flight {row['Flt_Num']} has Gate "
                     f"{row['Gate']!r} but {column} {row[column]!r}"

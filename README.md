@@ -39,6 +39,8 @@ It is built from `data/raw/Hite_Pull_10.7.csv` by `python3 scripts/build_flights
 
 Flights with a blank aircraft type have `NULL` as their `Aircraft_type`.
 
+These gates are treated as one gate, and `Gate` holds the group name: A4/A4A, A8/A8A, A10/A10A, A11/A11A, A13/A13A, B7/B7A/B7B, S1/S1B, S3/S3A, S4/S4A, S6/S6A, S7/S7A, S8/S8A, S9/S9A/S9B and S10/S10A. `Dept_Gate_Id` and `Arr_Gate_Id` keep the original gate IDs. The groups are set in `GATE_GROUPS` in `scripts/build_flights_by_gate.py`.
+
 The earlier export, `data/raw/Hite_Pull_2_Sept_17.csv`, has the same flights without times, plus flight 81 from CDG on 2026-08-23, which the newer export does not include.
 
 In the raw export, the `Ib_*` time columns describe the flight that brought the aircraft into the row's origin airport, and `schd_dprt_gts` is the row's own scheduled departure in GMT. So only `DEP` rows, whose origin is SEA, have SEA times; on `ARR` rows the time columns are `NULL`. The export's `Time`, second `schd_dprt_gts`, `Schd_Op_Ct`, `DOT_D0_Ct` and unnamed last column are not used.
@@ -46,7 +48,7 @@ In the raw export, the `Ib_*` time columns describe the flight that brought the 
 | Column | Description |
 |---|---|
 | `Arr/Dep` | `ARR` for an arrival, `DEP` for a departure |
-| `Gate` | Gate the flight used at this station |
+| `Gate` | Gate the flight used at SEA, or its group name for grouped gates (e.g. `A4/A4A`) |
 | `Flt_Orig_Date` | Flight origin date |
 | `Origin_Stn` | Origin station code |
 | `Dest_Stn` | Destination station code |
@@ -56,10 +58,10 @@ In the raw export, the `Ib_*` time columns describe the flight that brought the 
 | `Flt_Num` | Flight number |
 | `short_ac_type` | Aircraft family, grouped from `Aircraft_type` (see below) |
 | `sea_sched_dep_local` | `DEP` only: scheduled departure from SEA |
-| `inbound_gate` | `DEP` only: SEA gate the aircraft arrived at before this departure |
+| `inbound_gate` | `DEP` only: SEA gate (or gate group) the aircraft arrived at before this departure |
 | `inbound_sched_arr_local` | `DEP` only: scheduled arrival at SEA of the inbound aircraft |
 | `inbound_actual_arr_local` | `DEP` only: actual arrival at SEA of the inbound aircraft |
-| `towed` | `DEP` only: `Y` if `inbound_gate` differs from `Gate`, so the aircraft was moved between gates; `N` if not; `NULL` if the inbound gate is unknown |
+| `towed` | `DEP` only: `Y` if `inbound_gate` differs from `Gate`, so the aircraft was moved between gates; `N` if not; `NULL` if the inbound gate is unknown. Gates in the same group count as the same gate |
 
 Times are Seattle local time (PST/PDT) as `YYYY-MM-DD HH:MM`.
 
@@ -80,6 +82,8 @@ Times are Seattle local time (PST/PDT) as `YYYY-MM-DD HH:MM`.
 
 - `ARR` rows: `Gate` equals `Arr_Gate_Id`
 - `DEP` rows: `Gate` equals `Dept_Gate_Id`
+
+For grouped gates, the gate ID is compared by its group name.
 
 Run `python3 scripts/check_flights_by_gate.py` to check this. It lists any rows that break the rule and exits with an error if there are any.
 

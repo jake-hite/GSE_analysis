@@ -1,6 +1,6 @@
 class,capable_tractors,peak_jobs,peak_at,median_daily_peak,p95_daily_peak,minutes_over_capacity
 All jobs,25,18,2026-06-01 07:30,14,16,0
-ERJ,19,8,2026-01-11 15:30,6,7,0
+ERJ,19,8,2026-01-11 15:30,5,7,0
 "Narrowbody (A220, A321 Neo, 737)",23,13,2026-06-01 07:30,10,12,0
 757 and widebody,18,3,2026-01-02 15:30,2,3,0
 "Widebody (767, A330, A350)",14,3,2026-03-14 11:40,2,2,0

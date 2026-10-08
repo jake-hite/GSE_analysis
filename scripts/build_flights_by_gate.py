@@ -1,7 +1,9 @@
 """Build data/flights_by_gate.csv from the raw flight export data/raw/Hite_Pull_10.7.csv.
 
 Cleaning rules (agreed with the data owner):
-- Gate is Ob_Arr_Gt_Id for ARR rows and Ob_Dprt_Gt_Id for DEP rows.
+- Gate is Ob_Arr_Gt_Id for ARR rows and Ob_Dprt_Gt_Id for DEP rows. Gates listed together
+  in GATE_GROUPS are treated as one gate, named like "A4/A4A"; Dept_Gate_Id and Arr_Gate_Id
+  keep the original gate IDs.
 - Rows whose Gate is blank, NULL, NONE or OPS are dropped.
 - A blank or NULL aircraft type becomes NULL.
 - short_ac_type groups aircraft type codes into families.
@@ -13,7 +15,8 @@ So only DEP rows (origin SEA) carry SEA times:
 - inbound_gate: SEA gate the aircraft arrived at (Ib_Arr_Gt_Id)
 - inbound_sched_arr_local: scheduled arrival at SEA (Ib_Schd_Arr_LTs, Seattle time)
 - inbound_actual_arr_local: actual arrival at SEA (ib_actl_arr_gts, GMT)
-- towed: Y if the aircraft arrived at a different gate than it departed from
+- towed: Y if the aircraft arrived at a different gate than it departed from (gates in
+  the same group count as the same gate)
 All times are Seattle local (PST/PDT) as YYYY-MM-DD HH:MM. ARR rows have NULL there.
 """
 import csv
@@ -24,6 +27,17 @@ from zoneinfo import ZoneInfo
 SRC = "data/raw/Hite_Pull_10.7.csv"
 DST = "data/flights_by_gate.csv"
 SEA = ZoneInfo("America/Los_Angeles")
+
+# Gates treated as one gate. Each group's members are reported under the group name.
+GATE_GROUPS = ["A4/A4A", "A8/A8A", "A10/A10A", "A11/A11A", "A13/A13A", "B7/B7A/B7B",
+               "S1/S1B", "S3/S3A", "S4/S4A", "S6/S6A", "S7/S7A", "S8/S8A", "S9/S9A/S9B",
+               "S10/S10A"]
+MERGED_GATE = {gate: group for group in GATE_GROUPS for gate in group.split("/")}
+
+
+def merged(gate):
+    """The gate name used in the table: the group name for a grouped gate, else the gate."""
+    return MERGED_GATE.get(gate, gate)
 
 FAMILIES = {
     "ERJ": "EA4 EMW ES4 ES5", "A220": "221 223", "A321 Neo": "319 320 321 3N1 3NE 3NP",
@@ -91,7 +105,7 @@ def main(src=SRC, dst=DST):
         v = lambda name: r[col[name]].strip()
         direction = v("ARR/DEP")
         dep_gate, arr_gate = clean(v("Ob_Dprt_Gt_Id")), clean(v("Ob_Arr_Gt_Id"))
-        gate = arr_gate if direction == "ARR" else dep_gate
+        gate = merged(arr_gate if direction == "ARR" else dep_gate)
         if gate in ("", "NONE", "OPS"):
             reason = gate or "blank or NULL Gate"
             dropped[reason] = dropped.get(reason, 0) + 1
@@ -110,7 +124,7 @@ def main(src=SRC, dst=DST):
                     inbound_sched = last_before(arr_lt, SEA, sched_dep)
                 if arr_gt:
                     inbound_actual = nearest(arr_gt, timezone.utc, inbound_sched or sched_dep)
-            inbound_gate = clean(v("Ib_Arr_Gt_Id")) or "NULL"
+            inbound_gate = merged(clean(v("Ib_Arr_Gt_Id"))) or "NULL"
             if inbound_gate != "NULL":
                 towed = "Y" if inbound_gate != gate else "N"
 
