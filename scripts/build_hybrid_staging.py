@@ -6,7 +6,8 @@ SHARED_TRACTORS (e.g. "A12+A12A+A12B") share a single staged tractor.
 Jobs (pushbacks and tows) come from build_peak_demand.jobs_for, with the same assumptions.
 A tow counts against its departure gate.
 
-Staged gates get tractor models so that, within the fleet, staged tractors can tow as many
+Staged gates in FIXED_MODELS get the model set there. The other staged gates get models so
+that, within the fleet, staged tractors can tow as many
 jobs as possible in total. Among models that tie at a gate, the choice is the one that leaves
 the pool short least often: one model at a time is swapped while that reduces pool shortages.
 The staged tractor takes each job at its gate in time order if it is free and can tow that aircraft;
@@ -36,6 +37,8 @@ from build_peak_demand import (BIN, CLASSES, FAMILIES, floor_bin, jobs_for, pars
 POOL_CONCOURSES = ["S"]
 POOL_GATES = ["A8/A8A", "A9", "A10/A10A", "A20", "A21", "B14"]
 SHARED_TRACTORS = ["A12+A12A+A12B"]
+# Staged gates whose model is set by hand rather than chosen by the model assignment.
+FIXED_MODELS = {"A4/A4A": "GT-110"}
 OPERATING_MINUTES = 19 * 60  # 05:00 to midnight, for staged tractor utilisation
 
 
@@ -153,12 +156,19 @@ def main():
     # Give each staged gate a model so that staged tractors can tow as many jobs as possible
     # in total, within the units of each model. Ties go to less capable models.
     cover = {(g, m): coverage(g, m) for g in staged_entries for m in units}
-    staged = best_assignment(staged_entries, units, lambda g, m: cover[g, m] * 100 - len(can_tow[m]))
+    fixed = {g: m for g, m in FIXED_MODELS.items() if g in staged_entries}
+    free_units = dict(units)
+    for model in fixed.values():
+        free_units[model] -= 1
+    chosen = [g for g in staged_entries if g not in fixed]
+    staged = best_assignment(chosen, free_units, lambda g, m: cover[g, m] * 100 - len(can_tow[m]))
+    staged.update(fixed)
     remaining = dict(units)
     for model in staged.values():
         remaining[model] -= 1
     # Models that would cover exactly as many jobs at each gate, for the swap search below.
-    candidates = {g: [m for m in units if cover[g, m] == cover[g, staged[g]]] for g in staged_entries}
+    candidates = {g: [m for m in units if cover[g, m] == cover[g, staged[g]]] if g not in fixed
+                  else [staged[g]] for g in staged_entries}
 
     pool_busy = simulate(staged, jobs, can_tow)[1]
     groups = [set(c) for n in range(1, len(FAMILIES) + 1) for c in itertools.combinations(FAMILIES, n)]

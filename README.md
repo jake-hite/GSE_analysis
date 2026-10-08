@@ -133,6 +133,7 @@ Travel time between gates is not modelled, and times are scheduled, not actual. 
 - `POOL_CONCOURSES` and `POOL_GATES` set the gates served only by the pool (currently all S gates, A8/A8A, A9, A10/A10A, A20, A21 and B14)
 - every other gate with departures gets its own staged tractor
 - gates joined with `+` in `SHARED_TRACTORS` (currently `A12+A12A+A12B`) share one staged tractor
+- `FIXED_MODELS` sets the model at a staged gate by hand (currently a GT-110 at A4/A4A); the rest are chosen as below
 
 Staged gates get the models that let staged tractors tow as many jobs as possible across the fleet; among equal choices, the one that leaves the pool short least often. A staged tractor takes each job at its gate if it is free and can tow the aircraft; everything else goes to the pool, which is every tractor not staged.
 
