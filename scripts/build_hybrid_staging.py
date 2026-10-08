@@ -1,5 +1,7 @@
 """Model a hybrid: one tractor staged at each gate in STAGED_GATES, a shared pool for the rest.
 
+Gates joined with "+" in STAGED_GATES (e.g. "A12+A12A") share a single staged tractor.
+
 Jobs (pushbacks and tows) come from build_peak_demand.jobs_for, with the same assumptions.
 A tow counts against its departure gate.
 
@@ -25,8 +27,8 @@ from datetime import datetime, timedelta
 from build_peak_demand import (BIN, CLASSES, FAMILIES, floor_bin, jobs_for, parse, read,
                                write)
 
-STAGED_GATES = ["B7B", "B5A", "B5", "B3", "B1", "A1", "A2", "A3", "A4", "A5", "A6",
-                "A11", "A12A", "A12B", "A13", "A14"]
+STAGED_GATES = ["B7B", "B5A", "B5", "B4", "B3", "B1", "B6", "B8", "A1", "A2", "A3", "A4", "A5",
+                "A6", "A11", "A12+A12A", "A12B", "A13", "A14"]
 OPERATING_MINUTES = 19 * 60  # 05:00 to midnight, for staged tractor utilisation
 
 
@@ -79,6 +81,10 @@ def main():
     for r in deps:
         for start, minutes in jobs_for(r):
             jobs[r["Gate"]].append((start, start + timedelta(minutes=minutes), r["short_ac_type"]))
+    # Gates joined with "+" share one staged tractor.
+    for entry in STAGED_GATES:
+        if "+" in entry:
+            jobs[entry] = [job for gate in entry.split("+") for job in jobs.pop(gate, [])]
 
     # Candidate models per gate: those that can tow the most of its jobs.
     def coverage(gate, model):
