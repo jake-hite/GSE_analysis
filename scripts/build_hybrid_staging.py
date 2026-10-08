@@ -215,7 +215,7 @@ def main():
                 model, total, per_day, *rest = staged_cells[g]
             else:
                 model, total, per_day = "", len(jobs[g]), round(len(jobs[g]) / len(days), 1)
-                rest = [""] * 6
+                rest = [""] * 5
             rows.append([g, assignment, model, total, per_day, *rest, *mix_cells(g)])
     write("hybrid_gates.csv",
           ["Gate", "assignment", "staged_model", "jobs", "jobs_per_day", "jobs_by_staged_tractor",
