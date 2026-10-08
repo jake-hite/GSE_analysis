@@ -121,3 +121,11 @@ Travel time between gates is not modelled, and times are scheduled, not actual. 
 - `data/peak_demand_by_class.csv`: for groups of aircraft families, the most jobs in progress at once against the tractors able to do them, with median and 95th-percentile daily peaks
 - `data/peak_demand_by_concourse.csv`: the same peaks for each concourse, i.e. what each would need with its own tractors
 - `data/shortage_periods.csv`: every 5-minute step when no assignment of tractors to the jobs in progress works
+
+## Hybrid staging
+
+`python3 scripts/build_hybrid_staging.py` models one tractor staged at each gate in `STAGED_GATES` (set at the top of the script) with every other tractor in a shared pool. It uses the same jobs and assumptions as the peak demand analysis. Each staged gate gets a model that can tow as many of its aircraft as possible, picked so the pool is left short as rarely as possible. A staged tractor takes each job at its gate if it is free and can tow the aircraft; everything else goes to the pool.
+
+- `data/hybrid_staged_gates.csv`: for each staged gate, the model staged there, how many of the gate's jobs it handles, why the rest go to the pool, and how busy it is over the 05:00–24:00 day
+- `data/hybrid_pool_demand.csv`: peak pool jobs for each group of aircraft families against the pool's tractors
+- `data/hybrid_pool_shortages.csv`: every 5-minute step when the pool cannot cover its jobs

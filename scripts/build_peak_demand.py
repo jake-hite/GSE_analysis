@@ -66,6 +66,19 @@ def floor_bin(dt):
     return dt.replace(minute=dt.minute - dt.minute % BIN)
 
 
+def jobs_for(r):
+    """The (start, minutes) tractor jobs for one departure: its pushback, plus a tow if towed."""
+    fam, dep = r["short_ac_type"], parse(r["sea_sched_dep_local"])
+    jobs = [(dep, JOB_MINUTES["pushback_widebody" if fam in WIDEBODY else "pushback"])]
+    if r["towed"] == "Y":
+        arrived = parse(r["inbound_actual_arr_local"]) or parse(r["inbound_sched_arr_local"])
+        start = dep - timedelta(minutes=TOW_LEAD)
+        if arrived and arrived > start:
+            start = min(arrived, dep - timedelta(minutes=JOB_MINUTES["tow"]))
+        jobs.append((start, JOB_MINUTES["tow"]))
+    return jobs
+
+
 def main():
     fleet = read("tractor_capability_by_family.csv")
     units = {r["model_name"]: int(r["units"]) for r in fleet}
@@ -94,15 +107,8 @@ def main():
     busy = collections.defaultdict(collections.Counter)  # time step -> family -> jobs in progress
     busy_by_concourse = collections.defaultdict(lambda: collections.defaultdict(collections.Counter))
     for r in deps:
-        fam, dep = r["short_ac_type"], parse(r["sea_sched_dep_local"])
-        jobs = [(dep, JOB_MINUTES["pushback_widebody" if fam in WIDEBODY else "pushback"])]
-        if r["towed"] == "Y":
-            arrived = parse(r["inbound_actual_arr_local"]) or parse(r["inbound_sched_arr_local"])
-            start = dep - timedelta(minutes=TOW_LEAD)
-            if arrived and arrived > start:
-                start = min(arrived, dep - timedelta(minutes=JOB_MINUTES["tow"]))
-            jobs.append((start, JOB_MINUTES["tow"]))
-        for start, minutes in jobs:
+        fam = r["short_ac_type"]
+        for start, minutes in jobs_for(r):
             t = floor_bin(start)
             while t < start + timedelta(minutes=minutes):
                 busy[t][fam] += 1
