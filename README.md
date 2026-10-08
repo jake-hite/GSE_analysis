@@ -136,6 +136,6 @@ Travel time between gates is not modelled, and times are scheduled, not actual. 
 
 Staged gates get the models that let staged tractors tow as many jobs as possible across the fleet; among equal choices, the one that leaves the pool short least often. A staged tractor takes each job at its gate if it is free and can tow the aircraft; everything else goes to the pool, which is every tractor not staged.
 
-- `data/hybrid_gates.csv`: every gate, marked `Staged` or `Pool`. For staged gates: the model staged there, how many of the gate's jobs it handles, why the rest go to the pool, and how busy it is over the 05:00–24:00 day. For all gates: jobs per day and the aircraft mix (`% ERJ` … `% NULL`: each family's share of the gate's departures)
+- `data/hybrid_gates.csv`: every gate, marked `Staged` or `Pool`, with its total departures in the data (including those with an unknown aircraft type). For staged gates: the model staged there, how many of the gate's jobs it handles, why the rest go to the pool, and how busy it is over the 05:00–24:00 day. For all gates: jobs per day and the aircraft mix (`% ERJ` … `% NULL`: each family's share of the gate's departures)
 - `data/hybrid_pool_demand.csv`: peak pool jobs for each group of aircraft families against the pool's tractors
 - `data/hybrid_pool_shortages.csv`: every 5-minute step when the pool cannot cover its jobs

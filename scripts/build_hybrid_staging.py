@@ -16,7 +16,7 @@ short at a time step when some group of aircraft families has more jobs in progr
 pool tractors able to tow at least one of them. Travel time is not modelled.
 
 Writes to data/:
-- hybrid_gates.csv: every gate, staged or pool; for staged gates, the tractor staged there and
+- hybrid_gates.csv: every gate, staged or pool, with its total departures; for staged gates, the tractor staged there and
   how much of the gate's work it covers; for all gates, departures by aircraft family
   (% of the gate's departures)
 - hybrid_pool_demand.csv: peak pool jobs for each family group against pool tractors
@@ -216,9 +216,11 @@ def main():
             else:
                 model, total, per_day = "", len(jobs[g]), round(len(jobs[g]) / len(days), 1)
                 rest = [""] * 5
-            rows.append([g, assignment, model, total, per_day, *rest, *mix_cells(g)])
+            departures = sum(sum(mix[gate].values()) for gate in g.split("+"))
+            rows.append([g, assignment, model, departures, total, per_day, *rest, *mix_cells(g)])
     write("hybrid_gates.csv",
-          ["Gate", "assignment", "staged_model", "jobs", "jobs_per_day", "jobs_by_staged_tractor",
+          ["Gate", "assignment", "staged_model", "departures", "jobs", "jobs_per_day",
+           "jobs_by_staged_tractor",
            "share_by_staged_tractor", "to_pool_aircraft_too_big", "to_pool_tractor_busy",
            "staged_tractor_busy_share", *mix_header], rows)
 
