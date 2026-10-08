@@ -34,7 +34,7 @@ from build_peak_demand import (BIN, CLASSES, FAMILIES, floor_bin, jobs_for, pars
 # Every other gate with departures gets its own staged tractor, except that the gates in
 # each SHARED_TRACTORS entry share one.
 POOL_CONCOURSES = ["S"]
-POOL_GATES = ["A8/A8A", "A9", "A10/A10A"]
+POOL_GATES = ["A8/A8A", "A9", "A10/A10A", "A20", "A21", "B14"]
 SHARED_TRACTORS = ["A12+A12A+A12B"]
 OPERATING_MINUTES = 19 * 60  # 05:00 to midnight, for staged tractor utilisation
 

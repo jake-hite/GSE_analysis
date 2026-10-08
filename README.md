@@ -130,7 +130,7 @@ Travel time between gates is not modelled, and times are scheduled, not actual. 
 
 `python3 scripts/build_hybrid_staging.py` models a shared pool of tractors for some gates and a staged tractor at each of the others, using the same jobs and assumptions as the peak demand analysis. At the top of the script:
 
-- `POOL_CONCOURSES` and `POOL_GATES` set the gates served only by the pool (currently all S gates, A8/A8A, A9 and A10/A10A)
+- `POOL_CONCOURSES` and `POOL_GATES` set the gates served only by the pool (currently all S gates, A8/A8A, A9, A10/A10A, A20, A21 and B14)
 - every other gate with departures gets its own staged tractor
 - gates joined with `+` in `SHARED_TRACTORS` (currently `A12+A12A+A12B`) share one staged tractor
 
